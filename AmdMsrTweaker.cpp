@@ -139,7 +139,14 @@ void PrintInfo(const Info& info)
 		for (int i = 0; i < info.NumNBPStates; i++)
 		{
 			const NBPStateInfo pi = info.ReadNBPState(i);
-			cout << "  NB_P" << i << ": " << pi.Multi << "x at " << info.DecodeVID(pi.VID) << "V" << endl;
+			cout << "  NB_P" << i << ": " << pi.Multi << "x at " << info.DecodeVID(pi.VID) << "V";
+			if (pi.Enabled)
+				cout << " [ENABLED]";
+			if (i == info.NBPStateHiCPU)
+				cout << " [CPU Hi]";
+			if (i == info.NBPStateLoCPU)
+				cout << " [CPU Lo]";
+			cout << endl;
 
 			if (pi.MemPState >= 0)
 			{

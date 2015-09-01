@@ -67,7 +67,7 @@ bool Info::Initialize()
 	if (Family == 0x15)
 	{
 		eax = ReadPciConfig(AMD_CPU_DEVICE, 5, 0x170); // D18F5x170 Northbridge P-state Control
-		NumNBPStates = GetBits(eax, 0, 1) + 1; // NbPstateMaxVal
+		NumNBPStates = GetBits(eax, 0, 2) + 1; // NbPstateMaxVal[1:0]
 		NBPStateLoCPU = GetBits(eax, 3, 2); // NbPstateLo[1:0]
 		NBPStateHiCPU = GetBits(eax, 6, 2); // NbPstateHi[1:0]
 		IsDynMemPStateChgEnabled = GetBits(eax, 31, 1) == 0 ? true : false; // MemPstateDis
