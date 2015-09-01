@@ -134,10 +134,31 @@ void PrintInfo(const Info& info)
 	{
 		cout << "  ---" << endl;
 
+		int memPStateCnt[2] = { 0, 0 };
+
 		for (int i = 0; i < info.NumNBPStates; i++)
 		{
 			const NBPStateInfo pi = info.ReadNBPState(i);
 			cout << "  NB_P" << i << ": " << pi.Multi << "x at " << info.DecodeVID(pi.VID) << "V" << endl;
+
+			if (pi.MemPState >= 0)
+			{
+				cout << "      Memory in M" << pi.MemPState << endl;
+				memPStateCnt[pi.MemPState]++;
+			}
+		}
+
+		cout << "  ---" << endl;
+
+		for (int i = 0; i < info.NumMemPStates; i++)
+		{
+			if (memPStateCnt[i] > 0)
+			{
+				const MemPStateInfo pi = info.ReadMemPState(i);
+				cout << "  M" << i << ": " << pi.MemClkFreq << " MHz, MemClkFreqVal = " << pi.MemClkFreqVal << ", FastMstateDis = " << pi.FastMstateDis << endl;
+			}
+			if (!info.IsDynMemPStateChgEnabled)
+				break;
 		}
 	}
 }

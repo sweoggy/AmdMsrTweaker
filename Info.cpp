@@ -61,13 +61,18 @@ bool Info::Initialize()
 	NumCores = GetBits(regs.ecx, 0, 8) + 1;
 
 	// number of hardware P-states
-	eax = ReadPciConfig(AMD_CPU_DEVICE, 3, 0xdc);
-	NumPStates = GetBits(eax, 8, 3) + 1;
+	eax = ReadPciConfig(AMD_CPU_DEVICE, 3, 0xdc); // D18F3xDC Clock Power/Timing Control 2
+	NumPStates = GetBits(eax, 8, 3) + 1; // HwPstateMaxVal[2:0]
 
 	if (Family == 0x15)
 	{
-		eax = ReadPciConfig(AMD_CPU_DEVICE, 5, 0x170);
-		NumNBPStates = (eax & 0x3) + 1;
+		eax = ReadPciConfig(AMD_CPU_DEVICE, 5, 0x170); // D18F5x170 Northbridge P-state Control
+		NumNBPStates = GetBits(eax, 0, 1) + 1; // NbPstateMaxVal
+		NBPStateLoCPU = GetBits(eax, 3, 2); // NbPstateLo[1:0]
+		NBPStateHiCPU = GetBits(eax, 6, 2); // NbPstateHi[1:0]
+		IsDynMemPStateChgEnabled = GetBits(eax, 31, 1) == 0 ? true : false; // MemPstateDis
+		eax = ReadPciConfig(AMD_CPU_DEVICE, 3, 0xE8); // D18F3xE8 Northbridge Capabilities
+		NumMemPStates = GetBits(eax, 24, 1) + 1; // MemPstateCap
 	}
 
 	// get limits
@@ -135,7 +140,7 @@ bool Info::Initialize()
 
 PStateInfo Info::ReadPState(int index) const
 {
-	const QWORD msr = Rdmsr(0xc0010064 + index);
+	const QWORD msr = Rdmsr(0xc0010064 + index); // MSRC001_00[6B:64] P-state [7:0]
 
 	PStateInfo result;
 	result.Index = index;
@@ -167,8 +172,8 @@ PStateInfo Info::ReadPState(int index) const
 
 	if (!(Family == 0x12 || Family == 0x14))
 	{
-		const int nbDid = GetBits(msr, 22, 1);
-		result.NBPState = nbDid;
+		const int nbpstate = GetBits(msr, 22, 1); // NbPstate
+		result.NBPState = nbpstate;
 	}
 	else
 		result.NBPState = -1;
@@ -249,18 +254,23 @@ NBPStateInfo Info::ReadNBPState(int index) const
 	NBPStateInfo result;
 	result.Index = index;
 
-	const DWORD eax = ReadPciConfig(AMD_CPU_DEVICE, 5, 0x160 + index * 4);
+	const DWORD eax = ReadPciConfig(AMD_CPU_DEVICE, 5, 0x160 + index * 4); // D18F5x16[C:0] Northbridge P-state [3:0]
 
-	const int fid = GetBits(eax, 1, 5);
-	const int did = GetBits(eax, 7, 1);
-	int vid = GetBits(eax, 10, 7);
+	const int enabled = GetBits(eax, 0, 1); // NbPstateEn
+	const int fid = GetBits(eax, 1, 5); // NbFid[5:0]
+	const int did = GetBits(eax, 7, 1); // NbDid
+	int vid = GetBits(eax, 10, 7); // NbVid[6:0]
+	const int mempstate = GetBits(eax, 18, 1); // MemPstate
+	const int vid7 = GetBits(eax, 21, 1); // NbVid[7]
 
 	//on SVI2 platforms, 8th bit for NB P-State is stored separately
 	if (Family == 0x15 && ((Model > 0xF && Model < 0x20) || (Model > 0x2F && Model < 0x40)))
-		vid += (GetBits(eax, 21, 1) << 7);
+		vid += (vid7 << 7);
 
+	result.Enabled = enabled;
 	result.Multi = (fid + 4) / pow(2.0, did);
 	result.VID = vid;
+	result.MemPState = mempstate;
 
 	return result;
 }
@@ -298,6 +308,87 @@ void Info::WriteNBPState(const NBPStateInfo& info) const
 
 	WritePciConfig(AMD_CPU_DEVICE, 5, regAddress, eax);
 }
+
+
+
+
+MemPStateInfo Info::ReadMemPState(int index) const
+{
+	if (Family != 0x15)
+		throw std::exception("Mem P-states not supported");
+
+	MemPStateInfo result;
+	result.Index = index;
+
+	DWORD eax;
+	int memclkfreq = 0;
+	double memclkfreq_calc = -1.0;
+	int memclkfreqval = 0;
+	int fastmstatedis = 0;
+
+	if (index == 0)
+	{
+		eax = ReadPciConfig(AMD_CPU_DEVICE, 2, 0x94); // D18F2x94_dct[3:0] DRAM Configuration High
+		memclkfreq = GetBits(eax, 0, 5); // MemClkFreq[4:0]
+		memclkfreqval = GetBits(eax, 7, 1); // MemClkFreqVal
+	}
+	else if (index == 1)
+	{
+		eax = ReadPciConfig(AMD_CPU_DEVICE, 2, 0x2E0); // D18F2x2E0_dct[3:0] Memory P-state Control and Status
+		memclkfreq = GetBits(eax, 24, 5); // M1MemClkFreq[4:0]
+		fastmstatedis = GetBits(eax, 30, 1); // M1MemClkFreq[4:0]
+	}
+
+	switch (memclkfreq)
+	{
+		case 0x02:
+			memclkfreq_calc = 200.0;
+			break;
+
+		case 0x04:
+			memclkfreq_calc = 333.3;
+			break;
+
+		case 0x06:
+			memclkfreq_calc = 400.0;
+			break;
+
+		case 0x0A:
+			memclkfreq_calc = 533.3;
+			break;
+
+		case 0x0E:
+			memclkfreq_calc = 666.6;
+			break;
+
+		case 0x12:
+			memclkfreq_calc = 800.0;
+			break;
+
+		case 0x16:
+			memclkfreq_calc = 933.3;
+			break;
+
+		case 0x1A:
+			memclkfreq_calc =1066.6;
+			break;
+
+		case 0x1F:
+			memclkfreq_calc = 1200.0;
+			break;
+
+		default:
+			memclkfreq_calc = -1.0; // invalid
+	}
+
+
+	result.MemClkFreq = memclkfreq_calc;
+	result.MemClkFreqVal = memclkfreqval;
+	result.FastMstateDis = fastmstatedis;
+
+	return result;
+}
+
 
 
 void Info::SetCPBDis(bool enabled) const

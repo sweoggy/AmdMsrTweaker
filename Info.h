@@ -20,8 +20,18 @@ struct PStateInfo
 struct NBPStateInfo
 {
 	int Index;
+	int Enabled;
 	double Multi; // for 200 MHz reference
 	int VID;
+	int MemPState;
+};
+
+struct MemPStateInfo
+{
+	int Index;
+	double MemClkFreq; // in MHz, derived from MemClkFreq[4:0]/M1MemClkFreq[4:0]
+	int MemClkFreqVal;
+	int FastMstateDis;
 };
 
 
@@ -32,9 +42,14 @@ public:
 	int Family;
 	int Model;
 	int NumCores;
-	int NumPStates;
-	int NumNBPStates;
-
+	int NumPStates; // derived from HwPstateMaxVal[2:0]
+	int NumNBPStates; // derived from NbPstateMaxVal[1:0]
+	int NumMemPStates; // derived from MemPstateCap
+	int NBPStateHiCPU; // NB P-States used for CPU-only load, derived from NbPstateHi[1:0]
+	int NBPStateLoCPU; // NB P-States used for CPU-only load, derived from NbPstateLo[1:0]
+	int NBPStateHiGPU; // NB P-States used for GPU load
+	int NBPStateLoGPU; // NB P-States used for GPU load
+	
 	double MinMulti, MaxMulti; // internal ones for 100 MHz reference
 	double MaxSoftwareMulti; // for software (i.e., non-boost) P-states
 	double MinVID, MaxVID;
@@ -44,15 +59,24 @@ public:
 	bool IsBoostSupported;
 	bool IsBoostEnabled;
 	bool IsBoostLocked;
+	bool IsDynMemPStateChgEnabled; // derived from MemPstateDis
 	int NumBoostStates;
 
+	int CurPState;
+	int CurNBPState;
+	int CurMemPState;
 
 	Info()
 		: Family(0)
 		, Model(0)
 		, NumCores(0)
 		, NumPStates(0)
-		, NumNBPStates(2) //except family 0x15, we have at least 2 NB P-States
+		, NumNBPStates(2) // we have at least 2 NB P-States (more for family 0x15)
+		, NumMemPStates(1) // we have at least 1 Mem P-States (more for family 0x15)
+		, NBPStateHiCPU(0)
+		, NBPStateLoCPU(0)
+		, NBPStateHiGPU(0)
+		, NBPStateLoGPU(0)
 		, MinMulti(0.0), MaxMulti(0.0)
 		, MaxSoftwareMulti(0.0)
 		, MinVID(0.0), MaxVID(0.0)
@@ -61,7 +85,11 @@ public:
 		, IsBoostSupported(false)
 		, IsBoostEnabled(false)
 		, IsBoostLocked(false)
+		, IsDynMemPStateChgEnabled(false)
 		, NumBoostStates(0)
+		, CurPState(0)
+		, CurNBPState(0)
+		, CurMemPState(0)
 	{
 	}
 
@@ -72,6 +100,8 @@ public:
 
 	NBPStateInfo ReadNBPState(int index) const;
 	void WriteNBPState(const NBPStateInfo& info) const;
+
+	MemPStateInfo ReadMemPState(int index) const;
 
 	void SetCPBDis(bool enabled) const;
 	void SetBoostSource(bool enabled) const;
