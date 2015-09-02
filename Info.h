@@ -34,6 +34,15 @@ struct MemPStateInfo
 	int FastMstateDis;
 };
 
+struct iGPUPStateInfo
+{
+	int Index;
+	int Valid; // derived from StateValid in D0F0xBC_x3FD[8C:00:step14] LCLK DPM Control 0
+	double Freq; // in MHz, derived from LclkDivider in D0F0xBC_x3FD[8C:00:step14] LCLK DPM Control 0
+	int VID; // derived from VID in D0F0xBC_x3FD[8C:00:step14] LCLK DPM Control 0
+	int NBPState;
+};
+
 
 class Info
 {
@@ -102,6 +111,8 @@ public:
 	void WriteNBPState(const NBPStateInfo& info) const;
 
 	MemPStateInfo ReadMemPState(int index) const;
+
+	iGPUPStateInfo ReadiGPUPState(int index) const;
 
 	void SetCPBDis(bool enabled) const;
 	void SetBoostSource(bool enabled) const;
