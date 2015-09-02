@@ -142,15 +142,19 @@ void PrintInfo(const Info& info)
 			cout << "  NB_P" << i << ": " << pi.Multi << "x at " << info.DecodeVID(pi.VID) << "V";
 			if (pi.Enabled)
 				cout << " [ENABLED]";
-			//if (i == info.NBPStateHiCPU)
-			cout << " [CPU Hi] " << info.NBPStateHiCPU;
-			//if (i == info.NBPStateLoCPU)
-			cout << " [CPU Lo] " << info.NBPStateLoCPU;
+			if (i == info.NBPStateHiCPU)
+				cout << " [CPU Hi]";
+			if (i == info.NBPStateLoCPU)
+				cout << " [CPU Lo]";
+			if (i == info.NBPStateHiGPU)
+				cout << " [GPU Hi]";
+			if (i == info.NBPStateLoGPU)
+				cout << " [GPU Lo]";
 			cout << endl;
 
 			if (pi.MemPState >= 0)
 			{
-				cout << "      Memory in M" << pi.MemPState << endl;
+				cout << "         Memory in M" << pi.MemPState << endl;
 				memPStateCnt[pi.MemPState]++;
 			}
 		}
@@ -166,6 +170,17 @@ void PrintInfo(const Info& info)
 			}
 			if (!info.IsDynMemPStateChgEnabled)
 				break;
+		}
+
+		cout << "  ---" << endl;
+
+		for (int i = 0; i < 8; i++)
+		{
+			const iGPUPStateInfo pi = info.ReadiGPUPState(i);
+			cout << "  GPU_P" << i << ": " << pi.Freq << " MHz, " << pi.VID << " V";
+			if (pi.Valid)
+				cout << " [ENABLED]";
+			cout << endl;
 		}
 	}
 }

@@ -68,18 +68,18 @@ bool Info::Initialize()
 	{
 		eax = ReadPciConfig(AMD_CPU_DEVICE, 5, 0x170); // D18F5x170 Northbridge P-state Control
 		NumNBPStates = GetBits(eax, 0, 2) + 1; // NbPstateMaxVal[1:0]
-		//NBPStateLoCPU = GetBits(eax, 3, 2); // NbPstateLo[1:0]
-		//NBPStateHiCPU = GetBits(eax, 6, 2); // NbPstateHi[1:0]
+		NBPStateLoCPU = GetBits(eax, 3, 2); // NbPstateLo[1:0]
+		NBPStateHiCPU = GetBits(eax, 6, 2); // NbPstateHi[1:0]
 		IsDynMemPStateChgEnabled = GetBits(eax, 31, 1) == 0 ? true : false; // MemPstateDis
 		eax = ReadPciConfig(AMD_CPU_DEVICE, 3, 0xE8); // D18F3xE8 Northbridge Capabilities
 		NumMemPStates = GetBits(eax, 24, 1) + 1; // MemPstateCap
 		eax = 0x0003F9E8; // D0F0xBC_x3F9E8 NB_DPM_CONFIG_1
-		WritePciConfig(0, 0, 0xBC, eax); // D0F0xBC_x3F9E8 NB_DPM_CONFIG_1
+		//WritePciConfig(0, 0, 0xBC, eax); // D0F0xBC_x3F9E8 NB_DPM_CONFIG_1
 		eax = ReadPciConfig(0, 0, 0xBC); // D0F0xBC_x3F9E8 NB_DPM_CONFIG_1
 		NBPStateHiGPU = GetBits(eax, 24, 8); // DpmXNbPsHi[7:0]
 		NBPStateLoGPU = GetBits(eax, 16, 8); // DpmXNbPsLo[7:0]
-		NBPStateHiCPU = GetBits(eax, 8, 2); // Dpm0PgNbPsHi[7:0]
-		NBPStateLoCPU = GetBits(eax, 0, 2); // Dpm0PgNbPsLo[7:0]
+		//NBPStateHiCPU = GetBits(eax, 8, 8); // Dpm0PgNbPsHi[7:0]
+		//NBPStateLoCPU = GetBits(eax, 0, 8); // Dpm0PgNbPsLo[7:0]
 	}
 
 	// get limits
@@ -409,7 +409,7 @@ iGPUPStateInfo Info::ReadiGPUPState(int index) const
 	DWORD eax;
 
 	eax = 0x0003FD00 + index * 0x14; // D0F0xBC_x3FD[8C:00:step14] LCLK DPM Control 0
-	WritePciConfig(0, 0, 0xBC, eax); // D0F0xBC_x3FD[8C:00:step14] LCLK DPM Control 0
+	//WritePciConfig(0, 0, 0xBC, eax); // D0F0xBC_x3FD[8C:00:step14] LCLK DPM Control 0
 	eax = ReadPciConfig(0, 0, 0xBC); // D0F0xBC_x3FD[8C:00:step14] LCLK DPM Control 0
 	int statevalid = GetBits(eax, 24, 8); // StateValid[7:0]
 	int freq = GetBits(eax, 16, 8); // LclkDivider[7:0]
