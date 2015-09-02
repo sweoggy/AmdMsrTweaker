@@ -43,7 +43,8 @@ bool Worker::ParseParams(int argc, const char* argv[])
 	psi.NBPState = -1;
 
 	NBPStateInfo nbpsi;
-	nbpsi.Multi = nbpsi.VID = -1.0;
+	nbpsi.Multi = 1.0;
+	nbpsi.VID = -1;
 
 	for (int i = 0; i < info.NumPStates; i++)
 	{

@@ -64,22 +64,62 @@ bool Info::Initialize()
 	eax = ReadPciConfig(AMD_CPU_DEVICE, 3, 0xdc); // D18F3xDC Clock Power/Timing Control 2
 	NumPStates = GetBits(eax, 8, 3) + 1; // HwPstateMaxVal[2:0]
 
+	eax = ReadPciConfig(AMD_CPU_DEVICE, 3, 0xA0); // D18F3xA0 Power Control Miscellaneous
+	PsiVidEn = GetBits(eax, 7, 1); // PsiVidEn
+	PsiVid = GetBits(eax, 0, 7); // PsiVid[6:0]
+	const int PsiVid7 = GetBits(eax, 8, 1); // PsiVidEn[7]
+	PsiVid += (PsiVid7 << 7); // PsiVid[7:0]
+
 	if (Family == 0x15)
 	{
 		eax = ReadPciConfig(AMD_CPU_DEVICE, 5, 0x170); // D18F5x170 Northbridge P-state Control
 		NumNBPStates = GetBits(eax, 0, 2) + 1; // NbPstateMaxVal[1:0]
-		NBPStateLoCPU = GetBits(eax, 3, 2); // NbPstateLo[1:0]
-		NBPStateHiCPU = GetBits(eax, 6, 2); // NbPstateHi[1:0]
+		NBPStateLo = GetBits(eax, 3, 2); // NbPstateLo[1:0]
+		NBPStateHi = GetBits(eax, 6, 2); // NbPstateHi[1:0]
+		NbPstateGnbSlowDis = GetBits(eax, 23, 1); // NbPstateGnbSlowDis
 		IsDynMemPStateChgEnabled = GetBits(eax, 31, 1) == 0 ? true : false; // MemPstateDis
+		eax = ReadPciConfig(AMD_CPU_DEVICE, 5, 0x174); // D18F5x174 Northbridge P-state Status
+		StartupNbPstate = GetBits(eax, 1, 2); // StartupNbPstate[2:1]
 		eax = ReadPciConfig(AMD_CPU_DEVICE, 3, 0xE8); // D18F3xE8 Northbridge Capabilities
 		NumMemPStates = GetBits(eax, 24, 1) + 1; // MemPstateCap
+
+		// The index/data pair registers, D0F0xB8 and D0F0xBC, are used to access the registers at
+		// D0F0xBC_x[FFFFFFFF:00000000].To access any of these registers, the address is first written into the index
+		// register, D0F0xB8, and then the data is read from or written to the data register, D0F0xBC.
 		eax = 0x0003F9E8; // D0F0xBC_x3F9E8 NB_DPM_CONFIG_1
-		//WritePciConfig(0, 0, 0xBC, eax); // D0F0xBC_x3F9E8 NB_DPM_CONFIG_1
+		WritePciConfig(0, 0, 0xB8, eax); // D0F0xBC_x3F9E8 NB_DPM_CONFIG_1
 		eax = ReadPciConfig(0, 0, 0xBC); // D0F0xBC_x3F9E8 NB_DPM_CONFIG_1
 		NBPStateHiGPU = GetBits(eax, 24, 8); // DpmXNbPsHi[7:0]
 		NBPStateLoGPU = GetBits(eax, 16, 8); // DpmXNbPsLo[7:0]
-		//NBPStateHiCPU = GetBits(eax, 8, 8); // Dpm0PgNbPsHi[7:0]
-		//NBPStateLoCPU = GetBits(eax, 0, 8); // Dpm0PgNbPsLo[7:0]
+		NBPStateHiCPU = GetBits(eax, 8, 8); // Dpm0PgNbPsHi[7:0]
+		NBPStateLoCPU = GetBits(eax, 0, 8); // Dpm0PgNbPsLo[7:0]
+
+		eax = ReadPciConfig(AMD_CPU_DEVICE, 2, 0x94); // D18F2x94_dct[3:0] DRAM Configuration High
+		MemClkFreqVal = GetBits(eax, 7, 1); // MemClkFreqVal
+		eax = ReadPciConfig(AMD_CPU_DEVICE, 2, 0x2E0); // D18F2x2E0_dct[3:0] Memory P-state Control and Status
+		FastMstateDis = GetBits(eax, 30, 1); // FastMstateDis
+
+		GpuEnabled = 0;
+		eax = ReadPciConfig(1, 0, 0x00); // GpuEnabled = (D1F0x00!=FFFF_FFFFh)
+		if (eax != 0xFFFFFFFF) // GpuEnabled = (D1F0x00!=FFFF_FFFFh)
+			GpuEnabled = 1;
+		eax = ReadPciConfig(AMD_CPU_DEVICE, 5, 0x178); // D18F5x178 Northbridge Fusion Configuration
+		SwGfxDis = GetBits(eax, 19, 1); // SwGfxDis
+		eax = ReadPciConfig(AMD_CPU_DEVICE, 5, 0x17C); // D18F5x17C Miscellaneous Voltages
+		NbPsi0Vid = GetBits(eax, 23, 8); // NbPsi0Vid[7:0]
+		NbPsi0VidEn = GetBits(eax, 31, 1); // NbPsi0VidEn
+		eax = ReadPciConfig(0, 0, 0x7C); // D0F0x7C IOC Configuration Control
+		ForceIntGfxDisable = GetBits(eax, 0, 0); // ForceIntGfxDisable
+
+		// The index/data pair registers, D0F0xB8 and D0F0xBC, are used to access the registers at
+		// D0F0xBC_x[FFFFFFFF:00000000].To access any of these registers, the address is first written into the index
+		// register, D0F0xB8, and then the data is read from or written to the data register, D0F0xBC.
+		eax = 0x0003FDC8; // D0F0xBC_x3FDC8 SMU_LCLK_DPM_CNTL
+		WritePciConfig(0, 0, 0xB8, eax); // D0F0xBC_x3FDC8 SMU_LCLK_DPM_CNTL
+		eax = ReadPciConfig(0, 0, 0xBC); // D0F0xBC_x3FDC8 SMU_LCLK_DPM_CNTL
+		LclkDpmBootState = GetBits(eax, 8, 8); // LclkDpmBootState[7:0]
+		VoltageChgEn = GetBits(eax, 16, 8); // VoltageChgEn[7:0]
+		LclkDpmEn = GetBits(eax, 24, 8); // LclkDpmEn[7:0]
 	}
 
 	// get limits
@@ -88,6 +128,7 @@ bool Info::Initialize()
 	const int maxMulti = GetBits(msr, 49, 6);
 	const int minVID = GetBits(msr, 42, 7);
 	const int maxVID = GetBits(msr, 35, 7);
+	NbPstateDis = GetBits(msr, 23, 1);
 
 	MinMulti = (Family == 0x14 ? (maxMulti == 0 ? 0 : (maxMulti + 16) / 26.5)
 	                           : 1.0);
@@ -330,20 +371,16 @@ MemPStateInfo Info::ReadMemPState(int index) const
 	DWORD eax;
 	int memclkfreq = 0;
 	double memclkfreq_calc = -1.0;
-	int memclkfreqval = 0;
-	int fastmstatedis = 0;
-
+	
 	if (index == 0)
 	{
 		eax = ReadPciConfig(AMD_CPU_DEVICE, 2, 0x94); // D18F2x94_dct[3:0] DRAM Configuration High
 		memclkfreq = GetBits(eax, 0, 5); // MemClkFreq[4:0]
-		memclkfreqval = GetBits(eax, 7, 1); // MemClkFreqVal
 	}
 	else if (index == 1)
 	{
 		eax = ReadPciConfig(AMD_CPU_DEVICE, 2, 0x2E0); // D18F2x2E0_dct[3:0] Memory P-state Control and Status
 		memclkfreq = GetBits(eax, 24, 5); // M1MemClkFreq[4:0]
-		fastmstatedis = GetBits(eax, 30, 1); // M1MemClkFreq[4:0]
 	}
 
 	switch (memclkfreq)
@@ -390,9 +427,7 @@ MemPStateInfo Info::ReadMemPState(int index) const
 
 
 	result.MemClkFreq = memclkfreq_calc;
-	result.MemClkFreqVal = memclkfreqval;
-	result.FastMstateDis = fastmstatedis;
-
+	
 	return result;
 }
 
@@ -408,16 +443,21 @@ iGPUPStateInfo Info::ReadiGPUPState(int index) const
 
 	DWORD eax;
 
+	// The index/data pair registers, D0F0xB8 and D0F0xBC, are used to access the registers at
+	// D0F0xBC_x[FFFFFFFF:00000000].To access any of these registers, the address is first written into the index
+	// register, D0F0xB8, and then the data is read from or written to the data register, D0F0xBC.
 	eax = 0x0003FD00 + index * 0x14; // D0F0xBC_x3FD[8C:00:step14] LCLK DPM Control 0
-	//WritePciConfig(0, 0, 0xBC, eax); // D0F0xBC_x3FD[8C:00:step14] LCLK DPM Control 0
+	WritePciConfig(0, 0, 0xB8, eax); // D0F0xBC_x3FD[8C:00:step14] LCLK DPM Control 0
 	eax = ReadPciConfig(0, 0, 0xBC); // D0F0xBC_x3FD[8C:00:step14] LCLK DPM Control 0
 	int statevalid = GetBits(eax, 24, 8); // StateValid[7:0]
-	int freq = GetBits(eax, 16, 8); // LclkDivider[7:0]
+	int lclkdivider = GetBits(eax, 16, 8); // LclkDivider[7:0]
 	int vid = GetBits(eax, 8, 8); // VID[7:0]
+	int lowvoltagereqthreshold = GetBits(eax, 0, 8); // LowVoltageReqThreshold[7:0]
 
-	result.Valid = statevalid;
-	result.Freq = freq;
+	result.StateValid = statevalid;
+	result.LclkDivider = lclkdivider;
 	result.VID = vid;
+	result.LowVoltageReqThreshold = lowvoltagereqthreshold;
 
 	return result;
 }

@@ -130,6 +130,8 @@ void PrintInfo(const Info& info)
 		}
 	}
 
+	cout << "  * PsiVidEn = " << info.PsiVidEn << ", PsiVid = " << info.DecodeVID(info.PsiVid) << " V" << endl;
+
 	if (info.Family == 0x15)
 	{
 		cout << "  ---" << endl;
@@ -139,25 +141,31 @@ void PrintInfo(const Info& info)
 		for (int i = 0; i < info.NumNBPStates; i++)
 		{
 			const NBPStateInfo pi = info.ReadNBPState(i);
-			cout << "  NB_P" << i << ": " << pi.Multi << "x at " << info.DecodeVID(pi.VID) << "V";
 			if (pi.Enabled)
-				cout << " [ENABLED]";
-			if (i == info.NBPStateHiCPU)
-				cout << " [CPU Hi]";
-			if (i == info.NBPStateLoCPU)
-				cout << " [CPU Lo]";
-			if (i == info.NBPStateHiGPU)
-				cout << " [GPU Hi]";
-			if (i == info.NBPStateLoGPU)
-				cout << " [GPU Lo]";
-			cout << endl;
-
-			if (pi.MemPState >= 0)
 			{
-				cout << "         Memory in M" << pi.MemPState << endl;
-				memPStateCnt[pi.MemPState]++;
+				cout << "  NB_P" << i << ": " << pi.Multi << "x at " << info.DecodeVID(pi.VID) << "V";
+				if (i == info.NBPStateHi)
+					cout << " [NBPStateHi]";
+				if (i == info.NBPStateLo)
+					cout << " [NBPStateLo]";
+				//if (i == info.NBPStateHiGPU)
+				//	cout << " [GPU Hi]";
+				//if (i == info.NBPStateLoGPU)
+				//	cout << " [GPU Lo]";
+				cout << endl;
+
+				if (pi.MemPState >= 0)
+				{
+					cout << "         Memory in M" << pi.MemPState << endl;
+					memPStateCnt[pi.MemPState]++;
+				}
 			}
 		}
+
+		cout << "  * NbPstateDis = " << info.NbPstateDis << ", NbPstateGnbSlowDis = " << info.NbPstateGnbSlowDis << ", StartupNbPstate = " << info.StartupNbPstate << endl;
+		cout << "  * NbPsi0VidEn = " << info.NbPsi0VidEn << ", NbPsi0Vid = " << info.DecodeVID(info.NbPsi0Vid) << " V" << endl;
+		cout << "  * NBPStateHiCPU = " << info.NBPStateHiCPU << ", NBPStateLoCPU = " << info.NBPStateLoCPU << endl;
+		cout << "  * NBPStateHiGPU = " << info.NBPStateHiGPU << ", NBPStateLoGPU = " << info.NBPStateLoGPU << endl;
 
 		cout << "  ---" << endl;
 
@@ -166,22 +174,27 @@ void PrintInfo(const Info& info)
 			if (memPStateCnt[i] > 0)
 			{
 				const MemPStateInfo pi = info.ReadMemPState(i);
-				cout << "  M" << i << ": " << pi.MemClkFreq << " MHz, MemClkFreqVal = " << pi.MemClkFreqVal << ", FastMstateDis = " << pi.FastMstateDis << endl;
+				cout << "  M" << i << ": " << pi.MemClkFreq << " MHz" << endl;
 			}
 			if (!info.IsDynMemPStateChgEnabled)
 				break;
 		}
+
+		cout << "  * MemClkFreqVal(M0) = " << info.MemClkFreqVal << ", FastMstateDis(M1) = " << info.FastMstateDis << endl;
 
 		cout << "  ---" << endl;
 
 		for (int i = 0; i < 8; i++)
 		{
 			const iGPUPStateInfo pi = info.ReadiGPUPState(i);
-			cout << "  GPU_P" << i << ": " << pi.Freq << " MHz, " << pi.VID << " V";
-			if (pi.Valid)
-				cout << " [ENABLED]";
+			cout << "  GPU_P" << i << ": StateValid = " << pi.StateValid << ", LclkDivider = " << pi.LclkDivider << ", VID = " << info.DecodeVID(pi.VID) << " V";
+			if (pi.StateValid == 1)
+				cout << " [VALID]";
 			cout << endl;
 		}
+
+		cout << "  * GpuEnabled = " << info.GpuEnabled << ", SwGfxDis = " << info.SwGfxDis << ", ForceIntGfxDisable = " << info.ForceIntGfxDisable << endl;
+		cout << "  * LclkDpmEn = " << info.LclkDpmEn << ", VoltageChgEn = " << info.VoltageChgEn << ", LclkDpmBootState = " << info.LclkDpmBootState << endl;
 	}
 }
 
