@@ -144,6 +144,14 @@ bool Worker::ParseParams(int argc, const char* argv[])
 					continue;
 				}
 			}
+
+			if (_stricmp(key.c_str(), "NbPsi0Vid") == 0)
+			{
+				if (!value.empty())
+					_NbPsi0Vid_VID = info.EncodeVID(atof(value.c_str()));
+
+				continue;
+			}
 		}
 
 		cerr << "ERROR: invalid parameter " << param.c_str() << endl;
@@ -201,6 +209,9 @@ void Worker::ApplyChanges()
 		info.SetBoostSource(_turbo == 1);
 	if (_apm >= 0 && info.Family == 0x15)
 		info.SetAPM(_apm == 1);
+
+	if (_NbPsi0Vid_VID >= 0 && info.Family == 0x15)
+		info.WriteNbPsi0Vid(_NbPsi0Vid_VID);
 
 	SYSTEM_INFO sysInfo;
 	GetSystemInfo(&sysInfo);

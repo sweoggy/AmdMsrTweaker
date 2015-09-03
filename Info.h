@@ -162,6 +162,8 @@ public:
 	void SetBoostSource(bool enabled) const;
 	void SetAPM(bool enabled) const;
 
+	void WriteNbPsi0Vid(const int VID) const;
+
 	int GetCurrentPState() const;
 	void SetCurrentPState(int index) const;
 

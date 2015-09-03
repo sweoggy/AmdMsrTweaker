@@ -498,6 +498,25 @@ void Info::SetAPM(bool enabled) const
 }
 
 
+
+void Info::WriteNbPsi0Vid(const int VID) const
+{
+	if (Family != 0x15)
+		throw std::exception("NB P-states not supported");
+
+	DWORD eax = ReadPciConfig(AMD_CPU_DEVICE, 5, 0x17C); // D18F5x17C Miscellaneous Voltages
+	//GetBits(eax, 23, 8); // NbPsi0Vid[7:0]
+	//GetBits(eax, 31, 1); // NbPsi0VidEn
+
+	if (VID >= 0)
+	{
+		SetBits(eax, VID, 23, 8);
+	}
+
+	WritePciConfig(AMD_CPU_DEVICE, 5, 0x17C, eax);
+}
+
+
 int Info::GetCurrentPState() const
 {
 	const QWORD msr = Rdmsr(0xc0010071);

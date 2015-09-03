@@ -20,6 +20,7 @@ public:
 		, _turbo(-1)
 		, _apm(-1)
 		, _pState(-1)
+		, _NbPsi0Vid_VID(-1)
 	{ }
 
 	bool ParseParams(int argc, const char* argv[]);
@@ -35,4 +36,5 @@ private:
 	int _turbo;  // enable (1)/disable (0) CPB
 	int _apm;    // enable (1)/disable (0) APM
 	int _pState; // hardware index of the P-state to be activated
+	int _NbPsi0Vid_VID; // 
 };
