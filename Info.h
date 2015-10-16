@@ -42,6 +42,22 @@ struct iGPUPStateInfo
 	int LowVoltageReqThreshold; // derived from LowVoltageReqThreshold in D0F0xBC_x3FD[8C:00:step14] LCLK DPM Control 0
 };
 
+struct DRAMInfo
+{
+	int Freq = -1;
+	int tCL = -1;
+	int tRCD = -1;
+	int tRP = -1;
+	int tRAS = -1;
+	int tRC = -1;
+	int tRTP = -1;
+	int tRRD = -1;
+	int tWTR = -1;
+	int tWR = -1;
+	int tCWL = -1;
+	int CR = -1;
+};
+
 
 class Info
 {
@@ -91,6 +107,8 @@ public:
 	bool IsBoostEnabled;
 	bool IsBoostLocked;
 	bool IsDynMemPStateChgEnabled; // derived from MemPstateDis
+	int BoostEnAllCores;
+	int IgnoreBoostThresh;
 	int NumBoostStates;
 
 	int CurPState;
@@ -158,8 +176,12 @@ public:
 
 	iGPUPStateInfo ReadiGPUPState(int index) const;
 
+	DRAMInfo ReadDRAMInfo( int index ) const;
+
 	void SetCPBDis(bool enabled) const;
 	void SetBoostSource(bool enabled) const;
+	void SetBoostEnAllCores( int val ) const;
+	void SetIgnoreBoostThresh( int val ) const;
 	void SetAPM(bool enabled) const;
 
 	void WriteNbPsi0Vid(const int VID) const;

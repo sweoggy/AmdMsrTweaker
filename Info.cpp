@@ -158,6 +158,10 @@ bool Info::Initialize()
 		                                : GetBits(eax, 31, 1) == 1);
 		NumBoostStates = (Family == 0x10 ? GetBits(eax, 2, 1)
 		                                 : GetBits(eax, 2, 3));
+
+		BoostEnAllCores = ( Family == 0x12 ? GetBits( eax, 29, 1 ) : -1 );
+		IgnoreBoostThresh = ( Family == 0x12 ? GetBits( eax, 28, 1 ) : -1 );
+
 		const int boostSrc = GetBits(eax, 0, 2);
 		const bool isBoostSrcEnabled = (Family == 0x10 ? (boostSrc == 3)
 		                                               : (boostSrc == 1));
@@ -462,6 +466,114 @@ iGPUPStateInfo Info::ReadiGPUPState(int index) const
 	return result;
 }
 
+DRAMInfo Info::ReadDRAMInfo( int index ) const
+{
+	if( Family != 0x12 )
+		throw std::exception( "DRAMInfo not supported" );
+
+	if( index != 0 && index != 1 )
+		throw std::exception( "Index out of range" );
+
+	DRAMInfo result;
+	DWORD eax;
+
+	int MRSReg_idx = 0x84;
+	int TimingLowReg_idx = 0x88;
+	int ConfigHighReg_idx = 0x94;
+	int XDOffsetReg_idx = 0xF0;
+	int XDPortReg_idx = 0xF4;
+
+	if( index == 1 )
+	{
+		MRSReg_idx += 0x100;
+		TimingLowReg_idx += 0x100;
+		ConfigHighReg_idx += 0x100;
+		XDOffsetReg_idx += 0x100;
+		XDPortReg_idx += 0x100;
+	}
+
+	// D18F2x[1,0]88 (DRAM Timing Low Register)
+	eax = ReadPciConfig( AMD_CPU_DEVICE, 2, TimingLowReg_idx );
+	result.tCL = GetBits( eax, 0, 4 ) + 4; // [3:0] Tcl (- 4)
+
+	// D18F2x[1,0]F0 (DRAM Controller Extra Data Offset Register)
+	// This register is paired with D18F2x[1,0]F4 (DRAM Controller Extra Data Port)
+	// To read a DRAM Extra Data register, write the offset to F0 first, then F4 will be populated with that register.
+	// For example, to read D18F2x[1,0]F4_x40 (DRAM Timing 0), you first write the offset (x40) to F0, as shown here.
+	WritePciConfig( AMD_CPU_DEVICE, 2, XDOffsetReg_idx, 0x40 );
+	// Now F4 is populated with that register.
+	eax = ReadPciConfig( AMD_CPU_DEVICE, 2, XDPortReg_idx );
+
+	result.tRCD = GetBits( eax, 0, 4 ) + 5; // [3:0] Trcd (- 5)
+	result.tRP = GetBits( eax, 8, 4 ) + 5; // [11:8] Trp (- 5)
+	result.tRAS = GetBits( eax, 16, 5 ) + 15; // [20:16] Tras (- 15)
+	result.tRC = GetBits( eax, 24, 6 ) + 16; // [29:24] Trc (- 16)
+
+	// !! EXAMPLE WRITE CODE !! //
+#if YOU_ARE_INSANE
+	// Get the original register value (it has to be written completely)
+	WritePciConfig( AMD_CPU_DEVICE, 2, XDOffsetReg_idx, 0x40 );
+	eax = ReadPciConfig( AMD_CPU_DEVICE, 2, XDPortReg_idx );
+	// Modify only the bits to be changed
+	SetBits( eax, 4, 8, 4 );
+	// Write the new value to F4
+	WritePciConfig( AMD_CPU_DEVICE, 2, XDPortReg_idx, eax );
+	// Write the F4 offset to F0, with bit 30 (0-index, 31 for 1-index) set to 1 ("DctAccessWrite")
+	WritePciConfig( AMD_CPU_DEVICE, 2, XDOffsetReg_idx, 0x40000040 );
+#endif
+
+	// D18F2x[1,0]F4_x41 (DRAM Timing 1)
+	WritePciConfig( AMD_CPU_DEVICE, 2, XDOffsetReg_idx, 0x41 );
+	eax = ReadPciConfig( AMD_CPU_DEVICE, 2, XDPortReg_idx );
+
+	result.tRTP = GetBits( eax, 0, 3 ) + 4; // [2:0] Trtp (- 4)
+	result.tRRD = GetBits( eax, 8, 3 ) + 4; // [10:8] Trrd (- 4)
+	result.tWTR = GetBits( eax, 16, 3 ) + 4; // [18:16] Twtr (- 4)
+
+	// D18F2x[1,0]94 (DRAM Configuration High Register)
+	eax = ReadPciConfig( AMD_CPU_DEVICE, 2, ConfigHighReg_idx );
+	result.CR = GetBits( eax, 20, 1 ) + 1; // [20] SlowAccessMode
+	switch( GetBits( eax, 0, 5 ) ) // [4:0] MemClkFreq
+	{
+		// There may be some way to calculate freq from those bits directly,
+		// however the BKDG documents only these values as being valid,
+		// so it's probably best to just do it this way.
+		case 0b00110:
+			result.Freq = 400;
+			break;
+		case 0b01010:
+			result.Freq = 533;
+			break;
+		case 0b01110:
+			result.Freq = 667;
+			break;
+		case 0b10010:
+			result.Freq = 800;
+			break;
+		case 0b10110:
+			result.Freq = 933;
+			break;
+		default:
+			result.Freq = -1;
+			break;
+	}
+
+	// D18F2x[1,0]84 (DRAM MRS Register)
+	eax = ReadPciConfig( AMD_CPU_DEVICE, 2, MRSReg_idx );
+	int twr = GetBits( eax, 4, 3 ); // [6:4] Twr
+	// TODO: Surely there's some one-liner thing to calculate at least >= 0b001 ???
+	if( twr >= 0b100 )
+		result.tWR = twr << 1;
+	else if( twr >= 0b001 )
+		result.tWR = twr | 0b100;
+	else if( twr >= 0b000 )
+		result.tWR = 16;
+
+	result.tCWL = GetBits( eax, 20, 3 ) + 5; // [22:20] Tcwl
+
+	return result;
+}
+
 
 
 void Info::SetCPBDis(bool enabled) const
@@ -485,6 +597,40 @@ void Info::SetBoostSource(bool enabled) const
 	                          : 0);
 	SetBits(eax, bits, 0, 2);
 	WritePciConfig(AMD_CPU_DEVICE, 4, 0x15c, eax);
+}
+
+void Info::SetBoostEnAllCores( int val ) const
+{
+	if( !IsBoostSupported )
+		throw std::exception( "Boost not supported" );
+
+	if( BoostEnAllCores == -1 || Family != 0x12 )
+		throw std::exception( "BoostEnAllCores not supported" );
+
+	if( val != 1 && val != 0 )
+		throw std::exception( "Value out of range" );
+
+	// D18F4x15C (Core Performance Boost Control)
+	DWORD eax = ReadPciConfig( AMD_CPU_DEVICE, 4, 0x15c );
+	SetBits( eax, val, 29, 1 ); // [29] BoostEnAllCores
+	WritePciConfig( AMD_CPU_DEVICE, 4, 0x15c, eax );
+}
+
+void Info::SetIgnoreBoostThresh( int val ) const
+{
+	if( !IsBoostSupported )
+		throw std::exception( "Boost not supported" );
+
+	if( IgnoreBoostThresh == -1 || Family != 0x12 )
+		throw std::exception( "IgnoreBoostThresh not supported" );
+
+	if( val != 1 && val != 0 )
+		throw std::exception( "Value out of range" );
+
+	// D18F4x15C (Core Performance Boost Control)
+	DWORD eax = ReadPciConfig( AMD_CPU_DEVICE, 4, 0x15c );
+	SetBits( eax, val, 28, 1 ); // [28] IgnoreBoostThresh
+	WritePciConfig( AMD_CPU_DEVICE, 4, 0x15c, eax );
 }
 
 void Info::SetAPM(bool enabled) const

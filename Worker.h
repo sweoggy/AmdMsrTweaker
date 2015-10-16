@@ -21,6 +21,8 @@ public:
 		, _apm(-1)
 		, _pState(-1)
 		, _NbPsi0Vid_VID(-1)
+		, _boostEnAllCores(-1)
+		, _ignoreBoostThresh(-1)
 	{ }
 
 	bool ParseParams(int argc, const char* argv[]);
@@ -37,4 +39,6 @@ private:
 	int _apm;    // enable (1)/disable (0) APM
 	int _pState; // hardware index of the P-state to be activated
 	int _NbPsi0Vid_VID; // 
+	int _boostEnAllCores;
+	int _ignoreBoostThresh;
 };

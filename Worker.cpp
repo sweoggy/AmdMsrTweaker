@@ -135,6 +135,26 @@ bool Worker::ParseParams(int argc, const char* argv[])
 				}
 			}
 
+			if( _stricmp( key.c_str(), "BoostEnAllCores" ) == 0 )
+			{
+				const int flag = atoi( value.c_str() );
+				if( flag == 0 || flag == 1 )
+				{
+					_boostEnAllCores = flag;
+					continue;
+				}
+			}
+
+			if( _stricmp( key.c_str(), "IgnoreBoostThresh" ) == 0 )
+			{
+				const int flag = atoi( value.c_str() );
+				if( flag == 0 || flag == 1 )
+				{
+					_ignoreBoostThresh = flag;
+					continue;
+				}
+			}
+
 			if (_stricmp(key.c_str(), "APM") == 0)
 			{
 				const int flag = atoi(value.c_str());
@@ -207,6 +227,10 @@ void Worker::ApplyChanges()
 
 	if (_turbo >= 0 && info.IsBoostSupported)
 		info.SetBoostSource(_turbo == 1);
+	if( _boostEnAllCores >= 0 && info.BoostEnAllCores != -1 )
+		info.SetBoostEnAllCores( _boostEnAllCores );
+	if( _ignoreBoostThresh >= 0 && info.IgnoreBoostThresh != -1 )
+		info.SetIgnoreBoostThresh( _ignoreBoostThresh );
 	if (_apm >= 0 && info.Family == 0x15)
 		info.SetAPM(_apm == 1);
 

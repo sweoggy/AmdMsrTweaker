@@ -97,6 +97,12 @@ void PrintInfo(const Info& info)
 		cout << "  " << (info.IsBoostEnabled ? "enabled" : "disabled") << endl;
 		cout << "  " << (info.IsBoostLocked ? "locked" : "unlocked") << endl;
 
+		if( info.Family == 0x12 )
+		{
+			cout << "  BoostEnAllCores: " << info.BoostEnAllCores << endl;
+			cout << "  IgnoreBoostThresh: " << info.IgnoreBoostThresh << endl;
+		}
+
 		if (info.MaxMulti != info.MaxSoftwareMulti)
 			cout << "  Max multiplier: " << (info.MaxMulti / info.multiScaleFactor) << endl;
 	}
@@ -195,6 +201,30 @@ void PrintInfo(const Info& info)
 
 		cout << "  * GpuEnabled = " << info.GpuEnabled << ", SwGfxDis = " << info.SwGfxDis << ", ForceIntGfxDisable = " << info.ForceIntGfxDisable << endl;
 		cout << "  * LclkDpmEn = " << info.LclkDpmEn << ", VoltageChgEn = " << info.VoltageChgEn << ", LclkDpmBootState = " << info.LclkDpmBootState << endl;
+	}
+	else if( info.Family == 0x12 )
+	{
+		cout << endl;
+
+		cout << ".:. RAM" << endl << "---" << endl;
+
+		DRAMInfo sticks[2];
+		for( int i = 0; i <= 1; ++i )
+		{
+			sticks[i] = info.ReadDRAMInfo( i );
+		}
+		cout << "  Freq: " << sticks[0].Freq << "," << sticks[1].Freq << endl;
+		cout << "  tCL:  " << sticks[0].tCL  << "," << sticks[1].tCL  << endl;
+		cout << "  tRCD: " << sticks[0].tRCD << "," << sticks[1].tRCD << endl;
+		cout << "  tRP:  " << sticks[0].tRP  << "," << sticks[1].tRP  << endl;
+		cout << "  tRAS: " << sticks[0].tRAS << "," << sticks[1].tRAS << endl;
+		cout << "  tRC:  " << sticks[0].tRC  << "," << sticks[1].tRC  << endl;
+		cout << "  tRTP: " << sticks[0].tRTP << "," << sticks[1].tRTP << endl;
+		cout << "  tRRD: " << sticks[0].tRRD << "," << sticks[1].tRRD << endl;
+		cout << "  tWTR: " << sticks[0].tWTR << "," << sticks[1].tWTR << endl;
+		cout << "  tWR:  " << sticks[0].tWR  << "," << sticks[1].tWR  << endl;
+		cout << "  tCWL: " << sticks[0].tCWL << "," << sticks[1].tCWL << endl;
+		cout << "  CR:   " << sticks[0].CR   << "," << sticks[1].CR   << endl;
 	}
 }
 
