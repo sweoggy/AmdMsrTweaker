@@ -99,10 +99,6 @@ bool Info::Initialize()
 		eax = ReadPciConfig(AMD_CPU_DEVICE, 2, 0x2E0); // D18F2x2E0_dct[3:0] Memory P-state Control and Status
 		FastMstateDis = GetBits(eax, 30, 1); // FastMstateDis
 
-		GpuEnabled = 0;
-		eax = ReadPciConfig(1, 0, 0x00); // GpuEnabled = (D1F0x00!=FFFF_FFFFh)
-		if (eax != 0xFFFFFFFF) // GpuEnabled = (D1F0x00!=FFFF_FFFFh)
-			GpuEnabled = 1;
 		eax = ReadPciConfig(AMD_CPU_DEVICE, 5, 0x178); // D18F5x178 Northbridge Fusion Configuration
 		SwGfxDis = GetBits(eax, 19, 1); // SwGfxDis
 		eax = ReadPciConfig(AMD_CPU_DEVICE, 5, 0x17C); // D18F5x17C Miscellaneous Voltages
@@ -121,6 +117,10 @@ bool Info::Initialize()
 	}
 	if( Family == 0x12 || Family == 0x15 )
 	{
+		GpuEnabled = 0;
+		eax = ReadPciConfig( 1, 0, 0x00 ); // GpuEnabled = (D1F0x00!=FFFF_FFFFh)
+		if( eax != 0xFFFFFFFF ) // GpuEnabled = (D1F0x00!=FFFF_FFFFh)
+			GpuEnabled = 1;
 		eax = ReadPciConfig( 0, 0, 0x7C ); // D0F0x7C IOC Configuration Control
 		ForceIntGfxDisable = GetBits( eax, 0, 0 ); // ForceIntGfxDisable
 	}
