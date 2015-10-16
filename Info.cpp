@@ -108,8 +108,6 @@ bool Info::Initialize()
 		eax = ReadPciConfig(AMD_CPU_DEVICE, 5, 0x17C); // D18F5x17C Miscellaneous Voltages
 		NbPsi0Vid = GetBits(eax, 23, 8); // NbPsi0Vid[7:0]
 		NbPsi0VidEn = GetBits(eax, 31, 1); // NbPsi0VidEn
-		eax = ReadPciConfig(0, 0, 0x7C); // D0F0x7C IOC Configuration Control
-		ForceIntGfxDisable = GetBits(eax, 0, 0); // ForceIntGfxDisable
 
 		// The index/data pair registers, D0F0xB8 and D0F0xBC, are used to access the registers at
 		// D0F0xBC_x[FFFFFFFF:00000000].To access any of these registers, the address is first written into the index
@@ -120,6 +118,11 @@ bool Info::Initialize()
 		LclkDpmBootState = GetBits(eax, 8, 8); // LclkDpmBootState[7:0]
 		VoltageChgEn = GetBits(eax, 16, 8); // VoltageChgEn[7:0]
 		LclkDpmEn = GetBits(eax, 24, 8); // LclkDpmEn[7:0]
+	}
+	if( Family == 0x12 || Family == 0x15 )
+	{
+		eax = ReadPciConfig( 0, 0, 0x7C ); // D0F0x7C IOC Configuration Control
+		ForceIntGfxDisable = GetBits( eax, 0, 0 ); // ForceIntGfxDisable
 	}
 
 	// get limits
