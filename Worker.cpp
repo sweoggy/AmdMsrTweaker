@@ -202,16 +202,17 @@ void Worker::ApplyChanges()
 {
 	const Info& info = *_info;
 #ifdef _DEBUG
-	unsigned short sleepDelay = 5;
+	unsigned short sleepDelay = 0;
 	string sleepText = ", waiting for " + std::to_string(sleepDelay) + "seconds.";
 #endif
 
 	// Apply NB P-states
 #ifdef _DEBUG
-	cerr << "Applying NB P-states, waiting for 5 seconds" << endl;
+	cerr << "Applying NB P-states" << sleepText << endl;
 	std::this_thread::sleep_for(std::chrono::seconds(sleepDelay));
 #endif
-	if (info.Family == 0x15)
+	//Changing NB P-states causes system hang on Carrizo (Model == 0x60), disable for now
+	if (info.Family == 0x15 && info.Model != 0x60)
 	{
 		for (int i = 0; i < _nbPStates.size(); i++)
 		{
@@ -226,8 +227,7 @@ void Worker::ApplyChanges()
 		{
 			PStateInfo& psi = _pStates[i];
 
-			const int nbPState = (psi.NBPState >= 0 ? psi.NBPState :
-			                                          info.ReadPState(i).NBPState);
+			const int nbPState = (psi.NBPState >= 0 ? psi.NBPState : info.ReadPState(i).NBPState);
 			const NBPStateInfo& nbpsi = _nbPStates[nbPState];
 
 			if (nbpsi.VID >= 0)
@@ -235,9 +235,13 @@ void Worker::ApplyChanges()
 		}
 	}
 #ifdef _DEBUG
-	if (_nbPStates.size() > 0)
+	if (_nbPStates.size() > 0 && (info.Family == 0x15 && info.Model != 0x60))
 	{
 		cerr << "NB P-states successfully applied" << endl;
+	}
+	else if (info.Family == 0x15 && info.Model == 0x60)
+	{
+		cerr << "Modifying P-states on Carrizo is disabled for now (causes system hang)" << endl;
 	}
 	else
 	{
@@ -340,4 +344,9 @@ void Worker::ApplyChanges()
 
 	SetThreadPriority(hThread, THREAD_PRIORITY_NORMAL);
 	SetPriorityClass(hProcess, NORMAL_PRIORITY_CLASS);
+
+#ifdef _DEBUG
+	cerr << "Successfully executed all steps, exiting in 5 seconds" << endl;
+	std::this_thread::sleep_for(std::chrono::seconds(5));
+#endif
 }

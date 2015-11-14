@@ -79,7 +79,7 @@ int main(int argc, const char* argv[])
 void PrintInfo(const Info& info)
 {
 	cout << endl;
-	cout << "AmdMsrTweaker v1.1" << endl;
+	cout << "AmdMsrTweaker v2.0" << endl;
 	cout << endl;
 
 	cout << ".:. General" << endl << "---" << endl;
