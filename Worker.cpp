@@ -6,8 +6,10 @@
  */
 
 #include <algorithm>
+#include <chrono>
 #include <iostream>
 #include <locale>
+#include <thread>
 #include "Worker.h"
 #include "StringUtils.h"
 #include "WinRing0.h"
@@ -19,7 +21,6 @@ using std::max;
 using std::string;
 using std::tolower;
 using std::vector;
-
 
 static void SplitPair(string& left, string& right, const string& str, char delimiter)
 {
@@ -200,7 +201,16 @@ static void SwitchTo(int logicalCPUIndex)
 void Worker::ApplyChanges()
 {
 	const Info& info = *_info;
+#ifdef _DEBUG
+	unsigned short sleepDelay = 5;
+	string sleepText = ", waiting for " + std::to_string(sleepDelay) + "seconds.";
+#endif
 
+	// Apply NB P-states
+#ifdef _DEBUG
+	cerr << "Applying NB P-states, waiting for 5 seconds" << endl;
+	std::this_thread::sleep_for(std::chrono::seconds(sleepDelay));
+#endif
 	if (info.Family == 0x15)
 	{
 		for (int i = 0; i < _nbPStates.size(); i++)
@@ -224,18 +234,47 @@ void Worker::ApplyChanges()
 				psi.NBVID = nbpsi.VID;
 		}
 	}
+#ifdef _DEBUG
+	if (_nbPStates.size() > 0)
+	{
+		cerr << "NB P-states successfully applied" << endl;
+	}
+	else
+	{
+		cerr << "No P-states applied (non were specified)" << endl;
+	}
+#endif
 
+	// Applying turbo
+#ifdef _DEBUG
+	cerr << "Configuring turbo and APM (if supported)" << sleepText << endl;
+	std::this_thread::sleep_for(std::chrono::seconds(sleepDelay));
+#endif
 	if (_turbo >= 0 && info.IsBoostSupported)
+	{
 		info.SetBoostSource(_turbo == 1);
-	if( _boostEnAllCores >= 0 && info.BoostEnAllCores != -1 )
-		info.SetBoostEnAllCores( _boostEnAllCores );
-	if( _ignoreBoostThresh >= 0 && info.IgnoreBoostThresh != -1 )
-		info.SetIgnoreBoostThresh( _ignoreBoostThresh );
+	}
+	if (_boostEnAllCores >= 0 && info.BoostEnAllCores != -1)
+	{
+		info.SetBoostEnAllCores(_boostEnAllCores);
+	}
+	if (_ignoreBoostThresh >= 0 && info.IgnoreBoostThresh != -1)
+	{
+		info.SetIgnoreBoostThresh(_ignoreBoostThresh);
+	}
 	if (_apm >= 0 && info.Family == 0x15)
+	{
 		info.SetAPM(_apm == 1);
+	}
 
 	if (_NbPsi0Vid_VID >= 0 && info.Family == 0x15)
+	{
+#ifdef _DEBUG
+		cerr << "Writing NbPsi0Vid" << sleepText << endl;
+		std::this_thread::sleep_for(std::chrono::seconds(sleepDelay));
+#endif
 		info.WriteNbPsi0Vid(_NbPsi0Vid_VID);
+	}
 
 	SYSTEM_INFO sysInfo;
 	GetSystemInfo(&sysInfo);
@@ -247,7 +286,14 @@ void Worker::ApplyChanges()
 	SetPriorityClass(hProcess, REALTIME_PRIORITY_CLASS);
 	SetThreadPriority(hThread, THREAD_PRIORITY_HIGHEST);
 
-	// perform one iteration in each logical core
+	// Write P-states, perform one iteration in each logical core
+#ifdef _DEBUG
+	if (_pStates.size() > 0)
+	{
+		cerr << "Writing P-states" << sleepText << endl;
+		std::this_thread::sleep_for(std::chrono::seconds(sleepDelay));
+	}
+#endif
 	for (int j = 0; j < numLogicalCPUs; j++)
 	{
 		SwitchTo(j);
@@ -263,6 +309,14 @@ void Worker::ApplyChanges()
 			info.SetCPBDis(_turbo == 1);
 	}
 
+	// Set P-states, perform one iteration in each logical core
+#ifdef _DEBUG
+	if (ContainsChanges(_pStates[info.GetCurrentPState()]))
+	{
+		cerr << "Settings P-states" << sleepText << endl;
+		std::this_thread::sleep_for(std::chrono::seconds(sleepDelay));
+	}
+#endif
 	for (int j = 0; j < numLogicalCPUs; j++)
 	{
 		SwitchTo(j);

@@ -2,6 +2,8 @@ Thumbs.db
 *.obj
 *.exe
 *.pdb
+*.sdf
+*.opensdf
 *.user
 *.aps
 *.pch
