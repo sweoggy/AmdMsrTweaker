@@ -28,3 +28,6 @@ _ReSharper*/
 [Tt]est[Rr]esult*
 *.vssscc
 $tf*/
+*.VC.db
+*.VC.opendb
+ipch/

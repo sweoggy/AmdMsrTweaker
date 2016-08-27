@@ -12,6 +12,7 @@ The following CPU lines are supported:
 - Llano (Family 12h):  CPU P-States
 - Ontario / Zacate (Family 14h):  CPU P-States
 - Bulldozer, Piledriver, Trinity, Richland, Kaveri (Family 15h): CPU P-States, NB P-States
+- Carrizo: CPU P-States
 
 
 Usage
@@ -40,6 +41,13 @@ The voltage step supported on your platform is indicated on the info output.
 
 Version History
 ---------------
+
+v2.0 2016-08-27
+- Added Carrizo support
+- Improvements to Kaveri support
+- New functionality for Llano
+- Some other fixes
+- Now built with Visual Studio 2015
 
 v1.1	2013-04-09
 - Trinity and Richland support
